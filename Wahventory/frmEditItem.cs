@@ -70,7 +70,7 @@ namespace Wahventory
             loadTypes();
             loadFrom();
 
-            Database.set("SELECT tbltype.type_name,tblitem.isdonated,tblitem.price,tblitem.details,tblitem.depreciation_id,tblitem.date_procured,tblfrom.from_name,tblitem.property_no FROM ((tblitem INNER JOIN tblfrom ON tblitem.from_id = tblfrom.from_id) INNER JOIN tbltype ON tbltype.type_id = (SELECT tblitemtype.type_id FROM tblitemtype WHERE tblitemtype.item_id = tblitem.item_id)) WHERE tblitem.item_id = @itemId;", new String[] { itemId });
+            Database.set("SELECT tbltype.type_name,tblitem.isdonated,tblitem.price,tblitem.details,tblitem.depreciation_id,tblitem.date_procured,tblfrom.from_name,tblitem.property_no FROM ((tblitem INNER JOIN tblfrom ON tblitem.from_id = tblfrom.from_id) LEFT JOIN tbltype ON tbltype.type_id = (SELECT tblitemtype.type_id FROM tblitemtype WHERE tblitemtype.item_id = tblitem.item_id)) WHERE tblitem.item_id = @itemId;", new String[] { itemId });
 
             DataTable table = Database.executeResultSet();
 
@@ -170,17 +170,26 @@ namespace Wahventory
                 if (result == DialogResult.No)
                     return;
 
-
+                
                 //Type
                 if (cbType.SelectedIndex < 0)
                 {
                     types.TypeName = cbType.Text;
-                    if (types.addType())
+
+
+                    Database.set("SELECT type_id FROM tbltype WHERE type_name = @typeName;",new String[]{cbType.Text});
+                    String id = Database.executeString();
+                    if (String.IsNullOrEmpty(id))
                     {
-                        typeId = types.getLastinserted();
-                        cbType.Items.Add(new ComboBoxItem(cbType.Text, typeId));
-                        cbType.SelectedIndex = cbType.Items.Count - 1;
+                        if (types.addType())
+                        {
+                            typeId = types.getLastinserted();
+                            cbType.Items.Add(new ComboBoxItem(cbType.Text, typeId));
+                            cbType.SelectedIndex = cbType.Items.Count - 1;
+                        }
                     }
+                    else
+                        typeId = id;
                 }
                 else
                     typeId = ((ComboBoxItem)cbType.SelectedItem).HiddenValue;
@@ -233,7 +242,18 @@ namespace Wahventory
 
                         if (command.ExecuteNonQuery() == 1)
                         {
-                            Database.set("UPDATE tblitemtype SET type_id = @typeId WHERE item_id = @itemId;",new String[]{typeId,itemId});
+                            Database.set("SELECT itemtype_id FROM tblitemtype WHERE type_id = @typeId AND item_id = @itemId;",new String[]{typeId,itemId});
+                            String itemtypeid = Database.executeString();
+
+                            if (String.IsNullOrEmpty(itemtypeid))
+                            {
+                                Database.set("INSERT INTO tblitemtype VALUES (null,@typeId,@itemId);",new String[]{typeId,itemId});
+                            }
+                            else
+                            {
+                                Database.set("UPDATE tblitemtype SET type_id = @typeId WHERE item_id = @itemId;", new String[] { typeId, itemId });
+                            }
+
                             if (Database.executeNonQuery())
                             {
                                 Database.set("UPDATE tblbagitem SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text, itemId });
