@@ -18,7 +18,7 @@ namespace Wahventory
         private db_from from;
         private db_type types;
         public ctrl_Inventory inventory { set; private get; }
-        public String itemId { set; private get; }
+        public String[] itemsId { set; private get; }
         private double cost = 0.0;
         private string depreciationId = null;
         public frmEditItem()
@@ -66,35 +66,50 @@ namespace Wahventory
 
         private void frmEditItem_Load(object sender, EventArgs e)
         {
-
             loadTypes();
-            loadFrom();
-
-            Database.set("SELECT tbltype.type_name,tblitem.isdonated,tblitem.price,tblitem.details,tblitem.depreciation_id,tblitem.date_procured,tblfrom.from_name,tblitem.property_no FROM ((tblitem INNER JOIN tblfrom ON tblitem.from_id = tblfrom.from_id) LEFT JOIN tbltype ON tbltype.type_id = (SELECT tblitemtype.type_id FROM tblitemtype WHERE tblitemtype.item_id = tblitem.item_id)) WHERE tblitem.item_id = @itemId;", new String[] { itemId });
-
-            DataTable table = Database.executeResultSet();
-
-            if (table != null)
+            if (itemsId.Length == 1)
             {
-                DataRow row = table.Rows[0];
+                loadTypes();
+                loadFrom();
 
-                txtPropertyNo.Text = row["property_no"].ToString();
-                cbType.Text = row["type_name"].ToString();
-                rtDetails.Text = row["details"].ToString();
-                dtpProcured.Value = DateTime.Parse(row["date_procured"].ToString());
-                cbFrom.Text = row["from_name"].ToString();
-                cost = Double.Parse(row["price"].ToString());
-                txtCost.Text = Format.formatToPeso(cost);
+                Database.set("SELECT tbltype.type_name,tblitem.isdonated,tblitem.price,tblitem.details,tblitem.depreciation_id,tblitem.date_procured,tblfrom.from_name,tblitem.property_no FROM ((tblitem INNER JOIN tblfrom ON tblitem.from_id = tblfrom.from_id) LEFT JOIN tbltype ON tbltype.type_id = (SELECT tblitemtype.type_id FROM tblitemtype WHERE tblitemtype.item_id = tblitem.item_id)) WHERE tblitem.item_id = @itemId;", new String[] { itemsId[0] });
 
-                if (row["isdonated"].ToString() == "1")
-                    rbDonated.Checked = true;
-                else
-                    rbPurchased.Checked = true;
+                DataTable table = Database.executeResultSet();
+
+                if (table != null)
+                {
+                    DataRow row = table.Rows[0];
+
+                    txtPropertyNo.Text = row["property_no"].ToString();
+                    cbType.Text = row["type_name"].ToString();
+                    rtDetails.Text = row["details"].ToString();
+                    dtpProcured.Value = DateTime.Parse(row["date_procured"].ToString());
+                    cbFrom.Text = row["from_name"].ToString();
+                    cost = Double.Parse(row["price"].ToString());
+                    txtCost.Text = Format.formatToPeso(cost);
+
+                    if (row["isdonated"].ToString() == "1")
+                        rbDonated.Checked = true;
+                    else
+                        rbPurchased.Checked = true;
 
 
-
-                Database.set("SELECT tblitem.depreciation_id FROM tblitem WHERE tblitem.item_id = @itemId;", new String[] { itemId });
-                depreciationId = Database.executeString();
+                    Database.set("SELECT tblitem.depreciation_id FROM tblitem WHERE tblitem.item_id = @itemId;", new String[] { itemsId[0] });
+                    depreciationId = Database.executeString();
+                    
+                }
+            }
+            else
+            {
+                txtPropertyNo.Enabled = false;
+                rtDetails.Enabled = false;
+                dtpProcured.Enabled = false;
+                cbFrom.Enabled = false;
+                txtCost.Enabled = false;
+                btnDepreciation.Enabled = false;
+                lblMultipleUpdate.Visible = true;
+                dtpProcured.Text = "";
+                lblMultipleUpdate.Text = "There are " + itemsId.Length + " items affected. It will change all selected records, please be careful. "+Environment.NewLine+"(only 'TYPE' is available at this version)";
             }
 
 
@@ -102,8 +117,6 @@ namespace Wahventory
 
         private void btnDepreciation_Click(object sender, EventArgs e)
         {
-
-           
                 txtCost.Text = Format.formatToPeso(cost);
 
                 if (txtCost.Text == "0.00" || txtCost.Text == '\u20B1' + "0.00")
@@ -128,9 +141,6 @@ namespace Wahventory
                     }
                     depreciation.ShowDialog();
                 }
-            
-
-
         }
 
         private void txtCost_KeyUp(object sender, KeyEventArgs e)
@@ -154,142 +164,207 @@ namespace Wahventory
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-
-            txtCost.Text = Format.formatToPeso(cost);
-
-            String typeId = null, fromId = null;
-
-
-            if (String.IsNullOrEmpty(cbType.Text))
-                cbType.Focus();
-            else if (String.IsNullOrEmpty(cbFrom.Text))
-                cbFrom.Focus();
-            else
+            if (itemsId.Length == 1)
             {
-                DialogResult result = MessageBox.Show(null, "You want to save the changes?", "Save Changes", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
-                if (result == DialogResult.No)
-                    return;
+                txtCost.Text = Format.formatToPeso(cost);
 
-                
-                //Type
-                if (cbType.SelectedIndex < 0)
+                String typeId = null, fromId = null;
+
+
+                if (String.IsNullOrEmpty(cbType.Text))
+                    cbType.Focus();
+                else if (String.IsNullOrEmpty(cbFrom.Text))
+                    cbFrom.Focus();
+                else
                 {
-                    types.TypeName = cbType.Text;
+                    DialogResult result = MessageBox.Show(null, "You want to save the changes?", "Save Changes", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                    if (result == DialogResult.No)
+                        return;
 
 
-                    Database.set("SELECT type_id FROM tbltype WHERE type_name = @typeName;",new String[]{cbType.Text});
-                    String id = Database.executeString();
-                    if (String.IsNullOrEmpty(id))
+                    //Type
+                    if (cbType.SelectedIndex < 0)
                     {
-                        if (types.addType())
+                        types.TypeName = cbType.Text;
+
+
+                        Database.set("SELECT type_id FROM tbltype WHERE type_name = @typeName;", new String[] { cbType.Text });
+                        String id = Database.executeString();
+                        if (String.IsNullOrEmpty(id))
                         {
-                            typeId = types.getLastinserted();
-                            cbType.Items.Add(new ComboBoxItem(cbType.Text, typeId));
-                            cbType.SelectedIndex = cbType.Items.Count - 1;
+                            if (types.addType())
+                            {
+                                typeId = types.getLastinserted();
+                                cbType.Items.Add(new ComboBoxItem(cbType.Text, typeId));
+                                cbType.SelectedIndex = cbType.Items.Count - 1;
+                            }
+                        }
+                        else
+                            typeId = id;
+                    }
+                    else
+                        typeId = ((ComboBoxItem)cbType.SelectedItem).HiddenValue;
+
+
+                    //From
+                    if (cbFrom.SelectedIndex < 0)
+                    {
+                        from.FromName = cbFrom.Text;
+                        if (from.addFrom())
+                        {
+                            fromId = from.getLastInserted();
+                            cbFrom.Items.Add(new ComboBoxItem(cbFrom.Text, fromId));
+                            cbFrom.SelectedIndex = cbFrom.Items.Count - 1;
                         }
                     }
                     else
-                        typeId = id;
-                }
-                else
-                    typeId = ((ComboBoxItem)cbType.SelectedItem).HiddenValue;
+                        fromId = ((ComboBoxItem)cbFrom.SelectedItem).HiddenValue;
 
 
-                //From
-                if (cbFrom.SelectedIndex < 0)
-                {
-                    from.FromName = cbFrom.Text;
-                    if (from.addFrom())
+                    using (MySql.Data.MySqlClient.MySqlConnection connection = Database.getConnection())
                     {
-                        fromId = from.getLastInserted();
-                        cbFrom.Items.Add(new ComboBoxItem(cbFrom.Text, fromId));
-                        cbFrom.SelectedIndex = cbFrom.Items.Count - 1;
-                    }
-                }
-                else
-                    fromId = ((ComboBoxItem)cbFrom.SelectedItem).HiddenValue;
-
-
-                using (MySql.Data.MySqlClient.MySqlConnection connection = Database.getConnection())
-                {
-                    try
-                    {
-                        connection.Open();
-
-                        int isDonated = 0;
-                        if (rbDonated.Checked == true)
-                            isDonated = 1;
-                        else
-                            isDonated = 0;
-
-
-                        //format date procured
-                        String dateProcured = dtpProcured.Value.ToString("yyyy-MM-dd");
-
-                        if (depreciationId == "")
-                            depreciationId = null;
-
-                        String sql = "UPDATE tblitem SET isdonated = @isDonated,price = @cost,details = @details,depreciation_id = @deprecId, date_procured = @dateProcured, from_id = @fromId,property_no = @propertyNo WHERE item_id = @itemId;";
-                        MySql.Data.MySqlClient.MySqlCommand command = new MySql.Data.MySqlClient.MySqlCommand(sql, connection);
-                        command.Parameters.AddWithValue("@isDonated",isDonated);
-                        command.Parameters.AddWithValue("@cost",Format.formatToDecimal(txtCost.Text));
-                        command.Parameters.AddWithValue("@details",rtDetails.Text);
-                        command.Parameters.AddWithValue("@deprecId",depreciationId);
-                        command.Parameters.AddWithValue("@dateProcured",dateProcured);
-                        command.Parameters.AddWithValue("@fromId",fromId);
-                        command.Parameters.AddWithValue("@propertyNo",txtPropertyNo.Text);
-                        command.Parameters.AddWithValue("@itemId",itemId);
-
-                        if (command.ExecuteNonQuery() == 1)
+                        try
                         {
-                            Database.set("SELECT itemtype_id FROM tblitemtype WHERE type_id = @typeId AND item_id = @itemId;",new String[]{typeId,itemId});
-                            String itemtypeid = Database.executeString();
+                            connection.Open();
 
-                            if (String.IsNullOrEmpty(itemtypeid))
-                            {
-                                Database.set("INSERT INTO tblitemtype VALUES (null,@typeId,@itemId);",new String[]{typeId,itemId});
-                            }
+                            int isDonated = 0;
+                            if (rbDonated.Checked == true)
+                                isDonated = 1;
                             else
-                            {
-                                Database.set("UPDATE tblitemtype SET type_id = @typeId WHERE item_id = @itemId;", new String[] { typeId, itemId });
-                            }
+                                isDonated = 0;
 
-                            if (Database.executeNonQuery())
+
+                            //format date procured
+                            String dateProcured = dtpProcured.Value.ToString("yyyy-MM-dd");
+                            string itemId = itemsId[0];
+                            if (depreciationId == "")
+                                depreciationId = null;
+
+                            String sql = "UPDATE tblitem SET isdonated = @isDonated,price = @cost,details = @details,depreciation_id = @deprecId, date_procured = @dateProcured, from_id = @fromId,property_no = @propertyNo WHERE item_id = @itemId;";
+                            MySql.Data.MySqlClient.MySqlCommand command = new MySql.Data.MySqlClient.MySqlCommand(sql, connection);
+                            command.Parameters.AddWithValue("@isDonated", isDonated);
+                            command.Parameters.AddWithValue("@cost", Format.formatToDecimal(txtCost.Text));
+                            command.Parameters.AddWithValue("@details", rtDetails.Text);
+                            command.Parameters.AddWithValue("@deprecId", depreciationId);
+                            command.Parameters.AddWithValue("@dateProcured", dateProcured);
+                            command.Parameters.AddWithValue("@fromId", fromId);
+                            command.Parameters.AddWithValue("@propertyNo", txtPropertyNo.Text);
+                            command.Parameters.AddWithValue("@itemId", itemId);
+
+                            if (command.ExecuteNonQuery() == 1)
                             {
-                                Database.set("UPDATE tblbagitem SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text, itemId });
+                                Database.set("SELECT itemtype_id FROM tblitemtype WHERE item_id = @itemId;", new String[] { itemId });
+                                String itemtypeid = Database.executeString();
+
+                                if (String.IsNullOrEmpty(itemtypeid))
+                                {
+                                    Database.set("INSERT INTO tblitemtype VALUES (null,@typeId,@itemId);", new String[] { typeId, itemId });
+                                }
+                                else
+                                {
+                                    Database.set("UPDATE tblitemtype SET type_id = @typeId WHERE item_id = @itemId;", new String[] { typeId, itemId });
+                                }
+
                                 if (Database.executeNonQuery())
                                 {
-                                    Database.set("UPDATE tbldispose SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text,itemId });
+                                    Database.set("UPDATE tblbagitem SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text, itemId });
                                     if (Database.executeNonQuery())
                                     {
-                                        Database.set("UPDATE tblinventory SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text, itemId });
+                                        Database.set("UPDATE tbldispose SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text, itemId });
                                         if (Database.executeNonQuery())
                                         {
-                                            Database.set("UPDATE tbltechbag SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text, itemId });
+                                            Database.set("UPDATE tblinventory SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text, itemId });
                                             if (Database.executeNonQuery())
                                             {
-                                                MessageBox.Show(null, "Changes in the item was Successfully saved.", "Save Changes", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                                this.Close();
-                                                inventory.loadItems();
+                                                Database.set("UPDATE tbltechbag SET property_no = @propertyNo WHERE item_id = @itemId;", new String[] { txtPropertyNo.Text, itemId });
+                                                if (Database.executeNonQuery())
+                                                {
+                                                    MessageBox.Show(null, "Changes in the item was Successfully saved.", "Save Changes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                                    this.Close();
+                                                    inventory.loadItems();
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
+
                         }
+                        catch (Exception exception)
+                        {
+                            MessageBox.Show(exception.Message);
+                        }
+                        finally
+                        {
+                            connection.Close();
+                        }
+                    }
 
-                    }
-                    catch (Exception exception)
-                    {
-                        MessageBox.Show(exception.Message);
-                    }
-                    finally
-                    {
-                        connection.Close();
-                    }
                 }
-
             }
+
+
+                //Multiple update
+            else
+            {
+                if (String.IsNullOrEmpty(cbType.Text))
+                    cbType.Focus();
+                else
+                {
+                    DialogResult result = MessageBox.Show(null, "You want to save the changes?", "Save Changes", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                    if (result == DialogResult.No)
+                        return;
+
+
+                    String typeId = null;
+                    //Type
+                    if (cbType.SelectedIndex < 0)
+                    {
+                        types.TypeName = cbType.Text;
+
+                        Database.set("SELECT type_id FROM tbltype WHERE type_name = @typeName;", new String[] { cbType.Text });
+                        String id = Database.executeString();
+                        if (String.IsNullOrEmpty(id))
+                        {
+                            if (types.addType())
+                            {
+                                typeId = types.getLastinserted();
+                                cbType.Items.Add(new ComboBoxItem(cbType.Text, typeId));
+                                cbType.SelectedIndex = cbType.Items.Count - 1;
+                            }
+                        }
+                        else
+                            typeId = id;
+                    }
+                    else
+                        typeId = ((ComboBoxItem)cbType.SelectedItem).HiddenValue;
+
+
+                    foreach (String itemId in itemsId)
+                    {
+
+                        Database.set("SELECT itemtype_id FROM tblitemtype WHERE item_id = @itemId;", new String[] { itemId });
+                        String itemtypeid = Database.executeString();
+
+                        if (String.IsNullOrEmpty(itemtypeid))
+                        {
+                            Database.set("INSERT INTO tblitemtype VALUES (null,@typeId,@itemId);", new String[] { typeId, itemId });
+                        }
+                        else
+                        {
+                            Database.set("UPDATE tblitemtype SET type_id = @typeId WHERE item_id = @itemId;", new String[] { typeId, itemId });
+                        }
+                        Database.executeNonQuery();
+                    }
+                    MessageBox.Show(null, "Changes of all items was Successfully saved.", "Save Changes", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    this.Close();
+                    inventory.loadItems();
+                }
+            }
+
+
+
+
         }
     }
 }

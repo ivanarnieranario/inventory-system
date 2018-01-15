@@ -911,19 +911,24 @@ namespace Wahventory
         {
             if (dgvItems.RowCount > 0)
             {
-                int rowIndex = -1;
+                int c = -1;
+                String[] itemsId = new String[dgvItems.SelectedRows.Count];
                 try
                 {
-                    rowIndex = dgvItems.CurrentCell.RowIndex;
-                    String itemId = dgvItems.Rows[rowIndex].Cells[0].Value.ToString();
+                    if(dgvItems.SelectedRows.Count > 0){
+                        foreach (DataGridViewRow row in dgvItems.SelectedRows)
+                        {
+                            itemsId[++c]  = dgvItems.Rows[row.Index].Cells[0].Value.ToString();
+                        }
+                    }
 
                     if (e.KeyCode == Keys.E && e.Modifiers == (Keys.Control))
                     {
-                        if (!String.IsNullOrEmpty(itemId))
+                        if (itemsId.Length > 0)
                         {
                             frmEditItem editItem = new frmEditItem();
                             editItem.inventory = this;
-                            editItem.itemId = itemId;
+                            editItem.itemsId = itemsId;
                             editItem.ShowDialog();
                         }
                     }
@@ -931,7 +936,7 @@ namespace Wahventory
 
                     if (e.KeyCode == Keys.Delete)
                     {
-
+                        string itemId = itemsId[0];
                         Database.set("SELECT tblinventory.item_id FROM tblinventory WHERE tblinventory.item_id = @itemId UNION SELECT tblbagitem.item_id FROM tblbagitem WHERE tblbagitem.item_id = @itemId UNION SELECT tbltechbag.item_id FROM tbltechbag WHERE tbltechbag.item_id = @itemId;", new String[] { itemId });
                         int count = Database.executeResultSet().Rows.Count;
 
@@ -940,7 +945,6 @@ namespace Wahventory
                             MessageBox.Show(null, "This item cannot be deleted because it has an history of our inventory system.", "Delete item", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             return;
                         }
-
 
 
                         DialogResult result = MessageBox.Show(null, "Are you sure you want to delete this item?", "Delete item", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);

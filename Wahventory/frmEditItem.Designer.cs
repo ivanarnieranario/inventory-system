@@ -55,6 +55,7 @@
             this.panel1 = new System.Windows.Forms.Panel();
             this.panel2 = new System.Windows.Forms.Panel();
             this.panel3 = new System.Windows.Forms.Panel();
+            this.lblMultipleUpdate = new ns1.BunifuCustomLabel();
             this.pnlDrag.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.btnDepreciation)).BeginInit();
             this.SuspendLayout();
@@ -399,12 +400,24 @@
             this.panel3.Size = new System.Drawing.Size(605, 5);
             this.panel3.TabIndex = 234;
             // 
+            // lblMultipleUpdate
+            // 
+            this.lblMultipleUpdate.Font = new System.Drawing.Font("Segoe UI", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblMultipleUpdate.ForeColor = System.Drawing.Color.Orange;
+            this.lblMultipleUpdate.Location = new System.Drawing.Point(19, 318);
+            this.lblMultipleUpdate.Name = "lblMultipleUpdate";
+            this.lblMultipleUpdate.Size = new System.Drawing.Size(364, 103);
+            this.lblMultipleUpdate.TabIndex = 235;
+            this.lblMultipleUpdate.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblMultipleUpdate.Visible = false;
+            // 
             // frmEditItem
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(31)))), ((int)(((byte)(31)))), ((int)(((byte)(31)))));
             this.ClientSize = new System.Drawing.Size(615, 435);
+            this.Controls.Add(this.lblMultipleUpdate);
             this.Controls.Add(this.panel3);
             this.Controls.Add(this.panel2);
             this.Controls.Add(this.panel1);
@@ -469,5 +482,6 @@
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Panel panel3;
+        private ns1.BunifuCustomLabel lblMultipleUpdate;
     }
 }
